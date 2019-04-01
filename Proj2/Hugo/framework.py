@@ -50,9 +50,9 @@ class Linear(Module):
         super(Linear, self).__init__()
         self.in_feature_nb = in_feature_nb
         self.out_feature_nb = out_feature_nb
-        # Initialy undefined gradients
-        self.w_grad = None
-        self.bias_grad = None
+        # Initialy zero gradients
+        self.w_grad = torch.zeros(out_feature_nb, in_feature_nb)
+        self.bias_grad = torch.zeros(out_feature_nb)
         # Parameter (weights and bias) values
         self.w = torch.empty(out_feature_nb, in_feature_nb)
         self.bias = torch.empty(out_feature_nb)
@@ -67,16 +67,16 @@ class Linear(Module):
     def backward(self, gradwrtoutput):
         self.bias_grad = gradwrtoutput  # loss gradient wrt bias
         self.w_grad = gradwrtoutput.t() @ self.last_input  # loss gradient wrt w
-        return (self.w.t() @ gradwrtoutput.t())  # loss gradient wrt input
+        return (self.w.t() @ gradwrtoutput.t()).t()  # loss gradient wrt input
 
     def param(self):
         return [(self.w, self.w_grad), (self.bias, self.bias_grad)]
 
 
-class ReLu(Module):
+class ReLU(Module):
 
     def __init__(self):
-        super(ReLu, self).__init__()
+        super(ReLU, self).__init__()
 
     def forward(self, input):
         # relu(x) is 0 if x < 0, x otherwise
@@ -84,10 +84,14 @@ class ReLu(Module):
 
     def backward(self, gradwrtoutput):
         # relu(x) derivative is 0 if x < 0, 1 otherwise
-        return (gradwrtoutput.sign()+1) / 2
+        # return torch.relu_(gradwrtoutput.sign()+1) / 2
+        return gradwrtoutput.relu_()
 
     def param(self):
         return []
+
+
+# TODO tanh
 
 
 class Sequential(Module):
@@ -113,20 +117,20 @@ class Sequential(Module):
         return parameter_array
 
 
-class MSE(Module):
+class LossMSE(Module):
 
     def __init__(self, targets):
-        super(MSE, self).__init__()
+        super(LossMSE, self).__init__()
         self.targets = targets
         self.N = targets.shape[0]  # batch size
 
     def forward(self, input):
         self.last_input = input.clone()
-        return ((input - targets)**2).sum(dim=1).mean()
+        return ((input - self.targets)**2).sum(dim=1).mean()
 
     def backward(self, gradwrtoutput=1):
         # loss (MSE) derivative wrt input
-        return gradwrtoutput*(-2/self.N)*(self.last_input-self.targets)
+        return gradwrtoutput*(2/self.N)*(self.last_input-self.targets)
 
     def param(self):
         return []
@@ -155,12 +159,13 @@ class SGD(Optimizer):
 
     def zero_grad(self):
         # Set gradients of all parameters to zero
-        for p in parameters:
+        for p in self.parameters:
             for pair in p:
                 pair[1].zero_()
 
-    def step():
+    def step(self):
         # Update parameters according to gradient and learning rate
-        for p in parameters:
+        for p in self.parameters:
             for pair in p:
-                pair[0] -= pair[1]*lr
+                for e in pair:
+                    e[0] = e[0]-e[1]*self.lr
