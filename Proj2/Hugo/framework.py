@@ -96,7 +96,21 @@ class ReLU(Module):
         return []
 
 
-# TODO tanh
+class Tanh(Module):
+
+    def __init__(self):
+        super(Tanh, self).__init__()
+
+    def forward(self, input):
+        self.last_input = input.clone()
+        return torch.tanh(input)
+
+    def backward(self, gradwrtoutput):
+        # tanh(x) derivative is 1 / cosh(x)^2
+        return (1 / (torch.cosh(self.last_input)**2)) * gradwrtoutput
+
+    def param(self):
+        return []
 
 
 class Sequential(Module):
