@@ -29,7 +29,6 @@ def xavier_init(tensor, nonlinearity):
 # Convention : any tensor (whereas it's data (forward) of gradients (backward))
 # always has a dimension of N*D where N are the number of samples of the batch
 # and D the dimentions of the sample (at that stage of the network).
-# ( the course slides are using the Jacobian notation i.e D*N )
 
 
 class Module(object):
@@ -50,9 +49,9 @@ class Linear(Module):
         super(Linear, self).__init__()
         self.in_feature_nb = in_feature_nb
         self.out_feature_nb = out_feature_nb
-        # Initialy zero gradients
-        self.w_grad = torch.zeros(out_feature_nb, in_feature_nb)
-        self.bias_grad = torch.zeros(out_feature_nb)
+        # Average over over batch samples of gradients
+        self.w_grad = torch.empty(out_feature_nb, in_feature_nb)
+        self.bias_grad = torch.empty(out_feature_nb)
         # Parameter (weights and bias) values
         self.w = torch.empty(out_feature_nb, in_feature_nb)
         self.bias = torch.empty(out_feature_nb)
@@ -65,9 +64,15 @@ class Linear(Module):
         return input @ self.w.t() + self.bias
 
     def backward(self, gradwrtoutput):
-        self.bias_grad = gradwrtoutput  # loss gradient wrt bias
-        self.w_grad = gradwrtoutput.t() @ self.last_input  # loss gradient wrt w
-        return (self.w.t() @ gradwrtoutput.t()).t()  # loss gradient wrt input
+        # Average over batch samples of loss gradient wrt bias
+        self.bias_grad.data = gradwrtoutput.mean(dim=0)
+        # We want to compute a w grad matrix for each sample N of the batch
+        N = self.last_input.shape[0]
+        last_input_view = self.last_input.view(N, 1, self.in_feature_nb)
+        gradwrtoutput_view = gradwrtoutput.view(N, self.out_feature_nb, 1)
+        # Average over batch samples of loss gradient wrt w
+        self.w_grad.data = (gradwrtoutput_view @ last_input_view).mean(dim=0)
+        return gradwrtoutput @ self.w  # loss gradient wrt input
 
     def param(self):
         return [(self.w, self.w_grad), (self.bias, self.bias_grad)]
@@ -79,13 +84,13 @@ class ReLU(Module):
         super(ReLU, self).__init__()
 
     def forward(self, input):
+        self.last_input = input.clone()
         # relu(x) is 0 if x < 0, x otherwise
         return ((input.sign()+1) / 2) * input
 
     def backward(self, gradwrtoutput):
         # relu(x) derivative is 0 if x < 0, 1 otherwise
-        # return torch.relu_(gradwrtoutput.sign()+1) / 2
-        return gradwrtoutput.relu_()
+        return ((self.last_input.sign()+1) / 2) * gradwrtoutput
 
     def param(self):
         return []
@@ -126,11 +131,11 @@ class LossMSE(Module):
 
     def forward(self, input):
         self.last_input = input.clone()
-        return ((input - self.targets)**2).sum(dim=1).mean()
+        return ((self.targets - input)**2).sum(dim=1).mean()
 
     def backward(self, gradwrtoutput=1):
         # loss (MSE) derivative wrt input
-        return gradwrtoutput*(2/self.N)*(self.last_input-self.targets)
+        return gradwrtoutput * (-2.0/self.N) * (self.targets - self.last_input)
 
     def param(self):
         return []
@@ -164,8 +169,8 @@ class SGD(Optimizer):
                 pair[1].zero_()
 
     def step(self):
-        # Update parameters according to gradient and learning rate
+        # Update parameters according to the average of the gradients of all
+        # samples
         for p in self.parameters:
             for pair in p:
-                for e in pair:
-                    e[0] = e[0]-e[1]*self.lr
+                pair[0].data -= self.lr*pair[1]
