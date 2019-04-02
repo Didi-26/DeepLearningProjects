@@ -49,7 +49,7 @@ class Linear(Module):
         super(Linear, self).__init__()
         self.in_feature_nb = in_feature_nb
         self.out_feature_nb = out_feature_nb
-        # Average over over batch samples of gradients
+        # Average over batch samples of gradients
         self.w_grad = torch.empty(out_feature_nb, in_feature_nb)
         self.bias_grad = torch.empty(out_feature_nb)
         # Parameter (weights and bias) values
@@ -65,13 +65,13 @@ class Linear(Module):
 
     def backward(self, gradwrtoutput):
         # Average over batch samples of loss gradient wrt bias
-        self.bias_grad.data = gradwrtoutput.mean(dim=0)
+        self.bias_grad.data = gradwrtoutput.sum(dim=0)
         # We want to compute a w grad matrix for each sample N of the batch
         N = self.last_input.shape[0]
         last_input_view = self.last_input.view(N, 1, self.in_feature_nb)
         gradwrtoutput_view = gradwrtoutput.view(N, self.out_feature_nb, 1)
         # Average over batch samples of loss gradient wrt w
-        self.w_grad.data = (gradwrtoutput_view @ last_input_view).mean(dim=0)
+        self.w_grad.data = (gradwrtoutput_view @ last_input_view).sum(dim=0)
         return gradwrtoutput @ self.w  # loss gradient wrt input
 
     def param(self):
