@@ -113,6 +113,24 @@ class Tanh(Module):
         return []
 
 
+# class Sigmoid(Module):
+
+#     def __init__(self):
+#         super(Sigmoid, self).__init__()
+
+#     def forward(self, input):
+#         self.last_input = input.clone()
+#         return torch.sigmoid(input)
+
+#     def backward(self, gradwrtoutput):
+#         # sigmoid(x) derivative is e^(-x) / (e^(-x)+1)^2
+#         return (torch.exp(-self.last_input) /
+#                 ((torch.exp(-self.last_input)+1)**2)) * gradwrtoutput
+
+#     def param(self):
+#         return []
+
+
 class Sequential(Module):
 
     def __init__(self, modules_array):
@@ -163,7 +181,10 @@ class LossMSE(Module):
 class Optimizer(object):
 
     def zero_grad(self):
-        raise NotImplementedError
+        # Set gradients of all parameters to zero
+        for p in self.parameters:
+            for pair in p:
+                pair[1].zero_()
 
     def step():
         raise NotImplementedError
@@ -176,15 +197,38 @@ class SGD(Optimizer):
         self.parameters = parameters
         self.lr = lr  # learning rate
 
-    def zero_grad(self):
-        # Set gradients of all parameters to zero
+    def step(self):
         for p in self.parameters:
             for pair in p:
-                pair[1].zero_()
+                # Update parameter
+                pair[0].data -= self.lr*pair[1]
+
+
+class Adam(Optimizer):
+
+    def __init__(self, parameters, lr, beta1=0.9, beta2=0.999, eps=1e-8):
+        super(Adam, self).__init__()
+        self.parameters = parameters
+        self.lr = lr  # learning rate
+        if (not 0.0 <= beta1 < 1.0) or (not 0.0 <= beta2 < 1.0):
+            raise ValueError('betas must be in [0,1) interval')
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.eps = eps
+        # Initialize momentum and rescaling
+        self.last_mt = 0
+        self.last_vt = 0
 
     def step(self):
-        # Update parameters according to the average of the gradients of all
-        # samples
+        # Update according to Adam description in course slide
+        # (Kingma & Ba, 2014)
         for p in self.parameters:
             for pair in p:
-                pair[0].data -= self.lr*pair[1]
+                grad = pair[1]
+                mt = self.beta1*self.last_mt+(1-self.beta1)*grad
+                mt_scaled = mt / (1-self.beta1)
+                vt = self.beta2*self.last_vt+(1-self.beta2)*(grad**2)
+                vt_scaled = vt / (1-self.beta2)
+                # Update parameter
+                pair[0].data -= mt_scaled * self.lr / \
+                    (torch.sqrt(vt_scaled) + self.eps)
