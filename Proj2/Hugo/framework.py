@@ -216,19 +216,33 @@ class Adam(Optimizer):
         self.beta2 = beta2
         self.eps = eps
         # Initialize momentum and rescaling
-        self.last_mt = 0
-        self.last_vt = 0
+        self.last_mt = []
+        self.last_vt = []
+        for p in self.parameters:
+            for pair_idx in range(0, len(p)):
+                self.last_mt.append(torch.zeros(p[pair_idx][1].shape))
+                self.last_vt.append(torch.zeros(p[pair_idx][1].shape))
 
     def step(self):
-        # Update according to Adam description in course slide
-        # (Kingma & Ba, 2014)
+        counter = 0
         for p in self.parameters:
-            for pair in p:
-                grad = pair[1]
-                mt = self.beta1*self.last_mt+(1-self.beta1)*grad
+            for pair_idx in range(0, len(p)):
+                # Update according to Adam description in course slide
+                # (Kingma & Ba, 2014)
+                grad = p[pair_idx][1]
+                # Get least mt & vt for this parameter
+                last_mt = self.last_mt[counter]
+                last_vt = self.last_vt[counter]
+                # Compute momentums & scalings
+                mt = self.beta1*last_mt + (1-self.beta1)*grad
                 mt_scaled = mt / (1-self.beta1)
-                vt = self.beta2*self.last_vt+(1-self.beta2)*(grad**2)
+                vt = self.beta2*last_vt + (1-self.beta2)*(grad**2)
                 vt_scaled = vt / (1-self.beta2)
                 # Update parameter
-                pair[0].data -= mt_scaled * self.lr / \
+                p[pair_idx][0].data -= mt_scaled * self.lr / \
                     (torch.sqrt(vt_scaled) + self.eps)
+                # Update last mt & vt
+                self.last_mt[counter] = mt
+                self.last_vt[counter] = vt
+                # Keep track at which parameters we are at
+                counter += 1
