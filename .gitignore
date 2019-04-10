@@ -103,3 +103,8 @@ venv.bak/
 # mypy
 .mypy_cache/
 .vscode/settings.json
+
+# data
+Proj1/Didier/data/
+Proj1/Oumaima/data/
+Proj1/Hugo/data/
