@@ -215,6 +215,12 @@ class Adam(Optimizer):
         self.beta1 = beta1
         self.beta2 = beta2
         self.eps = eps
+        # These two values are needed to compute the current epoch
+        self.nb_calls = 0
+        self.nb_layers = 0
+        for p in parameters:
+            if p != []:
+                self.nb_layers +=1
         # Initialize momentum and rescaling
         self.last_mt = []
         self.last_vt = []
@@ -225,6 +231,9 @@ class Adam(Optimizer):
 
     def step(self):
         counter = 0
+        # The epoch is needed to scale the moments correctly
+        epoch = self.nb_calls//self.nb_layers
+        self.nb_calls += 1
         for p in self.parameters:
             for pair_idx in range(0, len(p)):
                 # Update according to Adam description in course slide
@@ -235,9 +244,9 @@ class Adam(Optimizer):
                 last_vt = self.last_vt[counter]
                 # Compute momentums & scalings
                 mt = self.beta1*last_mt + (1-self.beta1)*grad
-                mt_scaled = mt / (1-self.beta1)
+                mt_scaled = mt / (1-self.beta1**(epoch+1))
                 vt = self.beta2*last_vt + (1-self.beta2)*(grad**2)
-                vt_scaled = vt / (1-self.beta2)
+                vt_scaled = vt / (1-self.beta2**(epoch+1))
                 # Update parameter
                 p[pair_idx][0].data -= mt_scaled * self.lr / \
                     (torch.sqrt(vt_scaled) + self.eps)
