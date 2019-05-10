@@ -4,31 +4,36 @@ from torch import nn
 
 class SimpleLinear(nn.Module):
     """
-    A simple Linear classifier.
+    A simple Linear Model.
     Arguments:
         - in_dim: dimension of input
-        - out_dim: dimensioj of output
+        - out_dim: dimension of output
     """
     def __init__(self, in_dim, out_dim):
         super(SimpleLinear, self).__init__()
+        # (N, in_dim) -> (N, out_dim)
         self.layer = nn.Linear(in_dim, out_dim)
         
     def forward(self, x):
         # Flatten to vector before linear layer
         x = x.view(x.size(0), -1)
+        # Linear
         x = self.layer(x)
         return x
 
 
 class MLP(nn.Module):
+    """ A multilayer perceptron (i.e fully connected + ReLu layers) of L hidden 
+    layers of with h hidden neurons per layer 
+    Arguments:
+        - in_dim: dimension of input
+        - out_dim: dimension of output
+    """
     
-    """ A multilayer perceptron (i.e fully connected layers only) of L hidden 
-    layers of with h hidden neurons per layer """
-    
-    def __init__(self, L, h):
+    def __init__(self, L, h, in_dim, out_dim):
         super(MLP, self).__init__()
-        # (N, 392 (=2*14*14)) -> (N, h)
-        self.in_layer = nn.Sequential(nn.Linear(392, h),
+        # (N, in_dim) -> (N, h)
+        self.in_layer = nn.Sequential(nn.Linear(in_dim, h),
                                       nn.ReLU())
         # (N, h) -> (N, h) -> ... -> (N, h)
         hidden_layers = []
@@ -36,8 +41,8 @@ class MLP(nn.Module):
             hidden_layers.append(nn.Linear(h,h))
             hidden_layers.append(nn.ReLU())
         self.hidden_layers = nn.Sequential(*hidden_layers)
-        # (N, h) -> (N, 2)
-        self.out_layer = nn.Linear(h, 2)
+        # (N, h) -> (N, out_dim)
+        self.out_layer = nn.Linear(h, out_dim)
         
     def forward(self, x):
         # Flatten to vector before linear layers
