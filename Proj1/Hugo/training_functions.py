@@ -88,29 +88,40 @@ def train(model, setup, train_input, train_target, test_input, test_target,
     N = train_input.shape[0]
     
     if setup == 'PairSetup':
-            # Hot encoding (train target will be later hot decoded if the loss is cross-entropy)
-            train_target = nn.functional.one_hot(train_target, 2).float()
-            test_target = nn.functional.one_hot(test_target, 2).float()
+        # Hot encoding
+        test_target_hot = nn.functional.one_hot(test_target, 2).float()
+        train_target_hot = nn.functional.one_hot(train_target, 2).float()
             
     if setup == 'AuxiliarySetup':
-            # Split pairs (flatten) into individual pictures
-            train_input = train_input.reshape((2*N, 14, 14))
-            test_input = test_input.reshape((2*N, 14, 14))
-            # Flatten targets
-            train_aux_target = train_aux_target.reshape(2*N)
-            test_aux_target = test_aux_target.reshape(2*N)
-            # Hot encoding (train targets will be later hot decoded if the loss is cross-entropy)
-            train_aux_target = nn.functional.one_hot(train_aux_target, 10).float()
-            test_aux_target = nn.functional.one_hot(test_aux_target, 10).float()
-    
+        # Split pairs (flatten) into individual pictures
+        train_input = train_input.reshape((2*N, 14, 14))
+        test_input = test_input.reshape((2*N, 14, 14))
+        # Flatten targets
+        train_target = train_target.reshape(2*N)
+        test_target = test_target.reshape(2*N)
+        # Hot encoding
+        test_target_hot = nn.functional.one_hot(test_target, 10).float()
+        train_target_hot = nn.functional.one_hot(train_target, 10).float()
+            
+    #print(train_input.shape)
+    #print(test_input.shape)
+    #print(train_target_hot.shape)
+    #print(test_target_hot.shape)
+    #print(train_target.shape)
+    #print(test_target.shape)
+    #print('-------')
+    #print('-------')
+            
     batch_size = 100
     
     optimizer = torch.optim.Adam(model.parameters(), lr=lr) 
     criterion = nn.CrossEntropyLoss() if use_crossentropy else nn.MSELoss()
     
-    trainDataset = TrainDataset(train_input, train_target)
-    dataloader = DataLoader(trainDataset, batch_size=batch_size, shuffle=True, 
-                            num_workers=0)
+    # If we use cross-entropy, we don't use hot-encoded targets
+    trainDataset = TrainDataset(train_input, 
+                                train_target if use_crossentropy else train_target_hot)
+    dataloader = DataLoader(trainDataset, 
+                            batch_size=batch_size, shuffle=True, num_workers=0)
     train_errors = []
     test_errors = []
     
@@ -121,7 +132,10 @@ def train(model, setup, train_input, train_target, test_input, test_target,
             inputSamples = batch['input']
             # If we use crossentropy, then we don't want hot-encoding of train target class but 
             # directly their class.
-            target = hot_decode(batch['target']) if use_crossentropy else batch['target']
+            target = batch['target']
+            #print(inputSamples.shape)
+            #print(target.shape)
+            #print('-------')
             # Forward pass
             output = model(inputSamples)
             # Compute loss
@@ -134,10 +148,10 @@ def train(model, setup, train_input, train_target, test_input, test_target,
         with torch.no_grad():
             # Compute train error
             output_train = model(train_input)
-            train_errors.append(compute_errors(output_train, train_target))
+            train_errors.append(compute_errors(output_train, train_target_hot))
             # Compute test error
             output_test = model(test_input)
-            test_errors.append(compute_errors(output_test, test_target))
+            test_errors.append(compute_errors(output_test, test_target_hot))
                 
     return train_errors, test_errors
 
@@ -182,7 +196,13 @@ def rounds_train(model, setup, rounds=10, augment_data=False, use_crossentropy=T
         if verbose :
             print('round n°{}'.format(i+1))
         # Load new data (data is randomized at each round as required in the project instructions)
-        train_input, train_target, train_aux_target , test_input, test_target, test_aux_target = prologue.generate_pair_sets(N)
+        train_input, train_pair_target, train_aux_target , test_input, test_pair_target, test_aux_target = prologue.generate_pair_sets(N)
+        if setup == 'PairSetup':
+            train_target = train_pair_target
+            test_target = test_pair_target
+        if setup == 'AuxiliarySetup':
+            train_target = train_aux_target
+            test_target = test_aux_target
         # Train
         train_errors, test_errors = train(model,
                                           setup,
