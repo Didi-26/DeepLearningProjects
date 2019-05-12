@@ -29,7 +29,6 @@ class MLP(nn.Module):
         - in_dim: dimension of input
         - out_dim: dimension of output
     """
-    
     def __init__(self, L, h, in_dim, out_dim):
         super(MLP, self).__init__()
         # (N, in_dim) -> (N, h)
@@ -38,6 +37,7 @@ class MLP(nn.Module):
         # (N, h) -> (N, h) -> ... -> (N, h)
         hidden_layers = []
         for l in range(L) :
+            hidden_layers.append(nn.Dropout(0.01))
             hidden_layers.append(nn.Linear(h,h))
             hidden_layers.append(nn.ReLU())
         self.hidden_layers = nn.Sequential(*hidden_layers)
@@ -54,47 +54,37 @@ class MLP(nn.Module):
         return x
 
     
-class LeNet5Like(nn.Module):
-    
-    """ Modified LeNet5 (adapted to have 14*14 inputs & ouptut size 2) """
-    
-    def __init__(self, dropout=False):
-        super(LeNet5Like, self).__init__()
+class LeNetLike5(nn.Module): 
+    """ Inspired from LeNet5. Input tensor of size N*in_depth*14*14, and output
+    tensor of size N*out_dim. Convolution kernels are 5*5.
+    Arguments:
+        - in_depth : number of layers of input picture (2 for PairSetup and 1 for
+    AuxiliarySetup)
+        - out_dim : dimension of the output (2 for PairSetup and 9 for 
+    AuxiliarySetup)
+    """
+    def __init__(self, in_depth, out_dim):
+        super(LeNetLike5, self).__init__()
         self.features = nn.Sequential(
-              # (N, 2, 14, 14) -> (N, 6, 10, 10)
-              nn.Conv2d(2, 6, kernel_size=5),
+              # (N, depth, 14, 14) -> (N, 6, 10, 10)
+              nn.Conv2d(in_depth, 6, kernel_size=5),
               nn.ReLU(),
               # (N, 6, 10, 10) -> (N, 6, 5, 5)
               nn.MaxPool2d(kernel_size=2, stride=2),
               # (N, 6, 5, 5) -> (N, 16, 1, 1)
               nn.Conv2d(6, 16, kernel_size=5),
               nn.ReLU()
-          )  
-        if dropout :
-            self.classifier = nn.Sequential(
-                  # (N, 16) -> (N, 8)
-                  nn.Linear(16, 8),
-                  nn.ReLU(),
-                  nn.Dropout(0.1),
-                  # (N, 8) -> (N, 4)
-                  nn.Linear(8, 4),
-                  nn.ReLU(),
-                  nn.Dropout(0.1),
-                  # (N, 4) -> (N, 2)
-                  nn.Linear(4, 2)
-              )
-        else :
-            self.classifier = nn.Sequential(
-                  # (N, 16) -> (N, 8)
-                  nn.Linear(16, 8),
-                  nn.ReLU(),
-                  # (N, 8) -> (N, 4)
-                  nn.Linear(8, 4),
-                  nn.ReLU(),
-                  # (N, 4) -> (N, 2)
-                  nn.Linear(4, 2),
-                  nn.ReLU()
-              )
+        )  
+        self.classifier = nn.Sequential(
+             # (N, 16) -> (N, 14)
+             nn.Linear(16, 14),
+             nn.ReLU(),
+             # (N, 14) -> (N, 10)
+             nn.Linear(14, 10),
+             nn.ReLU(),
+             # (N, 10) -> (N, out_dim)
+             nn.Linear(10, out_dim)
+         )
         
     def forward(self, x):
         # Feature block
@@ -106,39 +96,38 @@ class LeNet5Like(nn.Module):
         return x
 
     
-class LeNet3(nn.Module):
-    
-    """ Inspired from LeNet5 but with smaller 3*3 convolution """
-    
-    def __init__(self):
-        super(LeNet3, self).__init__()
+class LeNetLike3(nn.Module): 
+    """ Inspired from LeNet5. Input tensor of size N*in_depth*14*14, and output
+    tensor of size N*out_dim. Convolution kernels are 3*3.
+    Arguments:
+        - in_depth : number of layers of input picture (2 for PairSetup and 1 for
+    AuxiliarySetup)
+        - out_dim : dimension of the output (2 for PairSetup and 9 for 
+    AuxiliarySetup)
+    """
+    def __init__(self, in_depth, out_dim):
+        super(LeNetLike3, self).__init__()
         self.features = nn.Sequential(
-              # (N, 2, 14, 14) -> (N, 6, 12, 12)
-              nn.Conv2d(2, 8, kernel_size=3),
+              # (N, depth, 14, 14) -> (N, 6, 12, 12)
+              nn.Conv2d(in_depth, 6, kernel_size=3),
               nn.ReLU(),
-              # (N, 8, 12, 12) -> (N, 8, 6, 6)
+              # (N, 6, 12, 12) -> (N, 6, 6, 6)
               nn.MaxPool2d(kernel_size=2, stride=2),
-              # (N, 8, 6, 6) -> (N, 16, 4, 4)
-              nn.Conv2d(8, 16, kernel_size=3),
+              # (N, 6, 6, 6) -> (N, 16, 4, 4)
+              nn.Conv2d(6, 16, kernel_size=3),
               nn.ReLU(),
               # (N, 16, 4, 4) -> (N, 16, 2, 2)
-              nn.MaxPool2d(kernel_size=2, stride=2),
-              nn.ReLU(),
-              # (N, 16, 2, 2) -> (N, 32, 1, 1)
-              nn.Conv2d(16, 32, kernel_size=2),
-              nn.ReLU()
-          )
+              nn.MaxPool2d(kernel_size=2, stride=2)
+        )  
         self.classifier = nn.Sequential(
-            # (N, 32) -> (N, 16)
-            nn.Linear(32, 16),
-            nn.ReLU(),
-            nn.Dropout(0.1),
-            # (N, 16) -> (N, 8)
-            nn.Linear(16, 8),
-            nn.ReLU(),
-            nn.Dropout(0.1),
-            # (N, 8) -> (N, 2)
-            nn.Linear(8, 2)
+             # (N, 64) -> (N, 32)
+             nn.Linear(64, 32),
+             nn.ReLU(),
+             # (N, 32) -> (N, 16)
+             nn.Linear(32, 16),
+             nn.ReLU(),
+             # (N, 16) -> (N, out_dim)
+             nn.Linear(16, out_dim)
          )
         
     def forward(self, x):
@@ -154,9 +143,11 @@ class LeNet3(nn.Module):
 class ResBlock(nn.Module):
     def __init__(self, nb_channels, kernel_size):
         super(ResBlock, self).__init__()
-        self.conv1 = nn.Conv2d(nb_channels, nb_channels, kernel_size,padding = (kernel_size-1)//2)
+        self.conv1 = nn.Conv2d(nb_channels, nb_channels, 
+                               kernel_size,padding = (kernel_size-1)//2)
         self.bn1 = nn.BatchNorm2d(nb_channels)
-        self.conv2 = nn.Conv2d(nb_channels, nb_channels, kernel_size,padding = (kernel_size-1)//2)
+        self.conv2 = nn.Conv2d(nb_channels, nb_channels, 
+                               kernel_size,padding = (kernel_size-1)//2)
         self.bn2 = nn.BatchNorm2d(nb_channels)
     def forward(self, x):
         y = self.bn1(self.conv1(x))
@@ -200,7 +191,8 @@ class VGGNetLike(nn.Module):
             channels_count = 2**(6+l)
             prev_channels_count = 2 if (l == 0) else 2**(6+(l-1))
             print((prev_channels_count, channels_count))
-            layers.append(nn.Conv2d(prev_channels_count, channels_count, kernel_size=3, padding=1))
+            layers.append(nn.Conv2d(prev_channels_count, 
+                                    channels_count, kernel_size=3, padding=1))
             layers.append(nn.ReLU())
             #layers.append(nn.Conv2d(channels_count, channels_count, kernel_size=3, padding=1))
             layers.append(nn.MaxPool2d(kernel_size=2, stride=2))   

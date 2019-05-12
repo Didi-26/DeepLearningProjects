@@ -21,10 +21,10 @@ def plot_errors(train_errors, test_errors, title, file_path):
     plt.ylabel('error %')
     # Plot in half transparent all the traces
     plt.plot(train_histories.T, c='#1400f028')
-    plt.plot(test_histories.T, c='#f0800028')
+    plt.plot(test_histories.T, c='#fa000028')
     # Plot in plain color an average of the traces
     plt.plot(np.mean(train_histories, axis=0).T, c='#1400f0ff', label='train error %')
-    plt.plot(np.mean(test_histories, axis=0), c='#f08000ff', label='test error %')
+    plt.plot(np.mean(test_histories, axis=0), c='#fa0000ff', label='test error %')
     plt.ylim(0, 60)
     plt.grid()
     plt.legend()
