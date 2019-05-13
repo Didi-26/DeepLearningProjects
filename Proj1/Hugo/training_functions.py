@@ -14,14 +14,14 @@ class TrainDataset(Dataset):
         - train_input: a torch tensor of size N*2*14*14 for PairSetup or 2N*1*14*14 
         for AuxiliarySetup
         - train_target: target tensor
-        - augment_data: boolean, if True, data will be augmented by inversing pairs. Can be true only
+        - data_augment: boolean, if True, data will be augmented by inversing pairs. Can be true only
         for PairSetup
     """
-    def __init__(self, train_input, train_target, augment_data=False):
-        if augment_data :
+    def __init__(self, train_input, train_target, data_augment=False):
+        if data_augment :
             # Create the inversed pairs (data augmentation)
             train_input_rev = train_input[:,[1,0],:,:]
-            train_target_rev = train_target[:,[1,0]]
+            train_target_rev = -(train_target-1)
             self.train_input = torch.cat((train_input,train_input_rev))
             self.train_target = torch.cat((train_target,train_target_rev))
         else :
@@ -65,7 +65,7 @@ def compute_error_class(output, target):
 def train(model, setup, 
           train_input_original, train_pair_target, train_aux_target,
           test_input_original, test_pair_target, test_aux_target,
-          use_crossentropy = False, lr=1e-3, epochs = 200, verbose=False) :
+          use_crossentropy = False, lr=1e-3, epochs = 200, verbose=False, data_augment=False) :
     """ 
     Trains the given model using the given train and test dataset. Returns the
     train & test error % history.
@@ -86,6 +86,7 @@ def train(model, setup,
         - lr: learning rate
         - epochs: number of epochs to train with
         - verbose: if True, a dot '.' will be printed at each new epoch
+        - data_augment: bool, if True pairs will be augmented by inversing them. Only works for PairSetup and cross-entropy loss
     Returns:
         - (train_errors, test_errors), the train and test error % histories. Whereas the setup
         is 'PairSetup' or 'AuxiliarySetup', in both case the error is with respect to the final
@@ -121,7 +122,8 @@ def train(model, setup,
     
     # If we use cross-entropy, we don't use hot-encoded targets
     trainDataset = TrainDataset(train_input, 
-                                train_target if use_crossentropy else train_target_hot)
+                                train_target if use_crossentropy else train_target_hot,
+                                data_augment)
     dataloader = DataLoader(trainDataset, 
                             batch_size=batch_size, shuffle=True, num_workers=0)
     train_errors = []
@@ -169,7 +171,7 @@ def train(model, setup,
 
 def rounds_train(model, setup, rounds=10, augment_data=False, use_crossentropy=True, 
                           lr=1e-3, epochs=200, verbose=False, plot_title = None,
-                          plot_file_path = None):
+                          plot_file_path = None, data_augment=False):
     """
     Trains the model multiple times with randomized fresh new data. For each training, we keep
     only the best test error (early stopping) with its corresponding train error. Then we compute
@@ -190,7 +192,8 @@ def rounds_train(model, setup, rounds=10, augment_data=False, use_crossentropy=T
         - plot_title : str, if plot_title and plot_file_path are not None, then a figure with 
         the given titlt will be saved at the given path
         - plot_file_path : str, if plot_title and plot_file_path are not None, then a figure with 
-        the given titlt will be saved at the given path
+        the given title will be saved at the given path
+        - data_augment: bool, if True pairs will be augmented by inversing them. Only works for PairSetup.
     Returns:
         - (min_test_mean, min_test_std, min_tran_mean, min_train_std), the average and standard deviation
         of the min-train (and corresponding test) errors %.
@@ -213,7 +216,9 @@ def rounds_train(model, setup, rounds=10, augment_data=False, use_crossentropy=T
                                           setup,
                                           train_input, train_pair_target, train_aux_target,
                                           test_input, test_pair_target, test_aux_target,
-                                          use_crossentropy=use_crossentropy, lr=lr, epochs=epochs)
+                                          use_crossentropy=use_crossentropy, lr=lr, epochs=epochs,
+                                          verbose=False,
+                                          data_augment = data_augment)
         # Store error histories
         train_errors_histories.append(train_errors)
         test_errors_histories.append(test_errors)

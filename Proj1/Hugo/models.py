@@ -37,7 +37,7 @@ class MLP(nn.Module):
         # (N, h) -> (N, h) -> ... -> (N, h)
         hidden_layers = []
         for l in range(L) :
-            hidden_layers.append(nn.Dropout(0.01))
+            hidden_layers.append(nn.Dropout(0.02))
             hidden_layers.append(nn.Linear(h,h))
             hidden_layers.append(nn.ReLU())
         self.hidden_layers = nn.Sequential(*hidden_layers)
@@ -58,15 +58,15 @@ class LeNetLike5(nn.Module):
     """ Inspired from LeNet5. Input tensor of size N*in_depth*14*14, and output
     tensor of size N*out_dim. Convolution kernels are 5*5.
     Arguments:
-        - in_depth : number of layers of input picture (2 for PairSetup and 1 for
+        - in_depth : number of channels of input picture (2 for PairSetup and 1 for
     AuxiliarySetup)
-        - out_dim : dimension of the output (2 for PairSetup and 9 for 
+        - out_dim : dimension of the output (2 for PairSetup and 10 for 
     AuxiliarySetup)
     """
     def __init__(self, in_depth, out_dim):
         super(LeNetLike5, self).__init__()
         self.features = nn.Sequential(
-              # (N, depth, 14, 14) -> (N, 6, 10, 10)
+              # (N, in_depth, 14, 14) -> (N, 6, 10, 10)
               nn.Conv2d(in_depth, 6, kernel_size=5),
               nn.ReLU(),
               # (N, 6, 10, 10) -> (N, 6, 5, 5)
@@ -100,15 +100,15 @@ class LeNetLike3(nn.Module):
     """ Inspired from LeNet5. Input tensor of size N*in_depth*14*14, and output
     tensor of size N*out_dim. Convolution kernels are 3*3.
     Arguments:
-        - in_depth : number of layers of input picture (2 for PairSetup and 1 for
+        - in_depth : number of channels of input picture (2 for PairSetup and 1 for
     AuxiliarySetup)
-        - out_dim : dimension of the output (2 for PairSetup and 9 for 
+        - out_dim : dimension of the output (2 for PairSetup and 10 for 
     AuxiliarySetup)
     """
     def __init__(self, in_depth, out_dim):
         super(LeNetLike3, self).__init__()
         self.features = nn.Sequential(
-              # (N, depth, 14, 14) -> (N, 6, 12, 12)
+              # (N, in_depth, 14, 14) -> (N, 6, 12, 12)
               nn.Conv2d(in_depth, 6, kernel_size=3),
               nn.ReLU(),
               # (N, 6, 12, 12) -> (N, 6, 6, 6)
@@ -138,95 +138,113 @@ class LeNetLike3(nn.Module):
         # Classifier block
         x = self.classifier(x)
         return x
-    
-    
-class ResBlock(nn.Module):
-    def __init__(self, nb_channels, kernel_size):
-        super(ResBlock, self).__init__()
-        self.conv1 = nn.Conv2d(nb_channels, nb_channels, 
-                               kernel_size,padding = (kernel_size-1)//2)
-        self.bn1 = nn.BatchNorm2d(nb_channels)
-        self.conv2 = nn.Conv2d(nb_channels, nb_channels, 
-                               kernel_size,padding = (kernel_size-1)//2)
-        self.bn2 = nn.BatchNorm2d(nb_channels)
-    def forward(self, x):
-        y = self.bn1(self.conv1(x))
-        y = F.relu(y)
-        y = self.bn2(self.conv2(y))
-        y += x
-        y = F.relu(y)
-        return y
-class ResNet(nn.Module):
-    def __init__(self, nb_channels, kernel_size, nb_blocks):
-        super(ResNet, self).__init__()
-        self.conv0 = nn.Conv2d(1, nb_channels, kernel_size = 1)
-        self.resblocks = nn.Sequential(
-            # A bit of fancy Python
-            *(ResBlock(nb_channels, kernel_size) for _ in range(nb_blocks)))
-        self.avg = nn.AvgPool2d(kernel_size = 28)
-        self.fc = nn.Linear(nb_channels, 10)
-    def forward(self, x):
-        x = F.relu(self.conv0(x))
-        x = self.resblocks(x)
-        x = F.relu(self.avg(x))
-        x = x.view(x.size(0), -1)
-        x = self.fc(x)
-        return x
-    
 
-class VGGNetLike(nn.Module):
     
-    """ Inspired from VGGNet, adapted to have 14*14 inputs & ouptut size 2) """
-    
-    def __init__(self, dropout):
+class VGGNetLike(nn.Module): 
+    """ Inspired from VGGNet but less heavy : instead of going to from 
+    64 to 512 channels like in the original VGGNet19, we go from 16 to 128 channels.
+    Also we only do one convolution per block while VGGNet19 does two.
+    Input tensor of size N*in_depth*14*14, and output tensor of size N*out_dim. 
+    Convolution kernels are 3*3.
+    Arguments:
+        - in_depth : number of channels of input picture (2 for PairSetup and 1 for
+    AuxiliarySetup)
+        - out_dim : dimension of the output (2 for PairSetup and 10 for 
+    AuxiliarySetup)
+    """
+    def __init__(self, in_depth, out_dim):
         super(VGGNetLike, self).__init__()
         layers = []
-        # We start from 14*14 pictures padded to 16*16 and divide the 
-        # dimension by two while multiplying the channel count by two 
-        # at each block
+        # (N, in_depth, 14, 14) -> (N, in_depth, 16, 16)
         layers.append(nn.ConstantPad2d(1, 0))
-        for l in range(4):
-            # We go to 64 channels and multiply by 2 the number of
-            # channel at each block (like in original VGGNet) 
-            channels_count = 2**(6+l)
-            prev_channels_count = 2 if (l == 0) else 2**(6+(l-1))
-            print((prev_channels_count, channels_count))
+        # (N, in_depth, 16, 16) -> (N, 16, 8, 8) -> (N, 32, 4, 4) -> (N, 64, 2, 2) -> (N, 128, 1, 1)
+        for l in range(4): 
+            # First block goes to 16 channels (instead of 64 in original VGG) 
+            # and halfs the width/height
+            # The 3 other block double the channels and halfs the width/height
+            channels_count = 2**(4+l)
+            prev_channels_count = in_depth if (l == 0) else 2**(4+(l-1))
+            #print((prev_channels_count, channels_count))
             layers.append(nn.Conv2d(prev_channels_count, 
                                     channels_count, kernel_size=3, padding=1))
             layers.append(nn.ReLU())
-            #layers.append(nn.Conv2d(channels_count, channels_count, kernel_size=3, padding=1))
             layers.append(nn.MaxPool2d(kernel_size=2, stride=2))   
         self.features = nn.Sequential(*layers)
         # Classifier with fully connected layers
-        if dropout :
-            self.classifier = nn.Sequential(
-                  # (N, 512) -> (N, 128)
-                  nn.Linear(512, 128),
-                  nn.ReLU(),
-                  nn.Dropout(0.5),
-                  # (N, 128) -> (N, 64)
-                  nn.Linear(128, 64),
-                  nn.ReLU(),
-                  nn.Dropout(0.5),
-                  # (N, 64) -> (N, 2)
-                  nn.Linear(64, 2)
-              )
-        else :
-            self.classifier = nn.Sequential(
-                  # (N, 512) -> (N, 128)
-                  nn.Linear(512, 128),
-                  nn.ReLU(),
-                  # (N, 128) -> (N, 64)
-                  nn.Linear(128, 64),
-                  nn.ReLU(),
-                  # (N, 64) -> (N, 2)
-                  nn.Linear(64, 2)
-              )
+        self.classifier = nn.Sequential(            
+            # (N, 128) -> (N, 64)
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            # (N, 64) -> (N, 32)
+            nn.Linear(64, 32),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            # (N, 32) -> (N, out_dim)
+            nn.Linear(32, out_dim)
+        )
         
     def forward(self, x):
         # Feature block
         x = self.features(x)
         # Flatten to vector before linear layers
+        x = x.view(x.size(0), -1)
+        # Classifier block
+        x = self.classifier(x)
+        return x
+
+
+class ResBlock(nn.Module):
+    """
+    Residual Block used by Residual Net. From corresponds to the 
+    'No ReLU, BN before add' from http://torch.ch/blog/2016/02/04/resnets.html. 
+    Convolution kernel are 3*3.
+    Arguments :
+        - in_depth : number of channels of input
+    """
+    def __init__(self, depth):
+        super(ResBlock, self).__init__()
+        self.block = nn.Sequential(nn.Conv2d(depth, depth, kernel_size=3, padding=1),
+                                   nn.BatchNorm2d(depth),
+                                   nn.ReLU(),
+                                   nn.Conv2d(depth, depth, kernel_size=3, padding=1),
+                                   nn.BatchNorm2d(depth))
+        
+    def forward(self, x):
+        y = self.block(x)
+        return y + x    
+
+
+class ResNet(nn.Module):
+    def __init__(self, in_depth, out_dim, net_depth):
+        super(ResNet, self).__init__()
+        # (N, 1 or 2, 14, 14) -> (N, net_depth, 14, 14)
+        self.conv0 = nn.Conv2d(in_depth, net_depth, kernel_size = 1)
+        # Res Blocks
+        # (N, net_depth, 14, 14) ->  (N, net_depth*2, 7, 7)
+        self.resblocks = nn.Sequential(ResBlock(net_depth),
+                                       nn.Conv2d(net_depth, net_depth*2, kernel_size=3, padding=1),
+                                       nn.ReLU(),
+                                       nn.MaxPool2d(kernel_size=2, stride=2),
+                                       ResBlock(net_depth*2))
+        self.classifier = nn.Sequential(
+            # (N, net_depth*2*7*7) -> (N, 128)
+            nn.Linear(net_depth*2*7*7, 128),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            # (N, 128) -> (N, 64)
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            # (N, 64) -> (N, out_dim)
+            nn.Linear(64, out_dim))
+                                                
+    def forward(self, x):
+        # 1*1 convolution to go to net_depth channels
+        x = self.conv0(x)
+        # Residual blocks
+        x = self.resblocks(x)
+        # Flatten to vector before linear classifier
         x = x.view(x.size(0), -1)
         # Classifier block
         x = self.classifier(x)

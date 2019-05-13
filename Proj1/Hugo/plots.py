@@ -30,7 +30,6 @@ def plot_errors(train_errors, test_errors, title, file_path):
     plt.legend()
 
     plt.savefig(file_path, bbox_inches='tight')
-    plt.show()
     
     
 def plot_error_table(h_range, L_range, table_mean, table_std, title, file_path):
@@ -68,4 +67,3 @@ def plot_error_table(h_range, L_range, table_mean, table_std, title, file_path):
     ax.set_title(title)
     fig.tight_layout()
     plt.savefig(file_path, bbox_inches='tight')
-    plt.show()
