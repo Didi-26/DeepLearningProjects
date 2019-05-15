@@ -8,6 +8,13 @@ import models  # contains all our torch models classes
 import plots  # custom ploting functions to produce figures of the report
 import training_functions  # all our functions and classes for training
 
+msg = '''\n/!\ Running the script with all experiments enabled will produce all
+    the figure & results of the report but will take an extremely long
+    time to compute. To produce only certain figures, set the experiments
+    you wish to run to True and those to skip to False at the top of this
+    script.\n\n'''
+print(msg)
+
 # Set here which experiment is to be run (running them all will take a long
 # time to compute)
 run_LossCompare = False
@@ -19,8 +26,8 @@ run_PairSetup_SimpleLinear = False
 run_PairSetup_MLP = False
 run_PairSetup_LeNetLike5 = False
 run_PairSetup_LeNetLike3 = False
-run_PairSetup_VGGNetLike = False  # TODO
-run_PairSetup_ResNet = False  # TODO
+run_PairSetup_VGGNetLike = False
+run_PairSetup_ResNet = False
 # Experiments for "AuxiliarySetup" : In this setup, we consider N individual
 # 14*14 pictures as input. The network use an auxiliary loss to learn to
 # classify those from 0 to 9. The auxiliary outputs are the the class 0 to 9
@@ -34,8 +41,8 @@ run_AuxiliarySetup_LeNetLike5 = False
 run_AuxiliarySetup_LeNetLike3 = False
 run_AuxiliarySetup_VGGNetLike = False  # TODO
 run_AuxiliarySetup_ResNet = False  # TODO
-
-run_PairSetup_LeNetLike3_DataAugmented = False
+# Comparaison perf with /without data-augmentation
+run_PairSetup_MLP_DataAugmented_Compare = False
 
 # Set a fixed seed for reproducibility
 random_seed = 42
@@ -319,7 +326,7 @@ if run_AuxiliarySetup_VGGNetLike:
         'AuxiliarySetup',
         plot_title='Auxiliary Setup VGGNetLike error history',
         plot_file_path='./plots/auxiliarySetup_VGGNetLike.svg',
-        lr=0.0004,
+        lr=0.00035,
         epochs=300,
         use_crossentropy=True,
         verbose=True,
@@ -349,22 +356,38 @@ if run_AuxiliarySetup_ResNet:
     print('number of trainable parameters : {}'.format(
         count_parameters(model)))
 
-if run_PairSetup_LeNetLike3_DataAugmented:
+if run_PairSetup_MLP_DataAugmented_Compare:
     torch.manual_seed(random_seed)
-    print('**** Running LetNetLike3 model data-augmented (for PairSetup) ****')
-    in_depth, out_dim = 2, 2
-    model = models.LeNetLike3(in_depth, out_dim)
+    print('*************** Data-Augmentation Comparaison ********************')
+    print('******* Running DataAugmented MLP model (for PairSetup) **********')
+    in_dim, out_dim = 14 * 14 * 2, 2
+    model = models.MLP(10, 45, in_dim, out_dim)
     test_err_mean, test_err_std, _, _ = training_functions.rounds_train(
-        model,
-        'PairSetup',
-        plot_title='Pair Setup LeNetLike3 error history',
-        plot_file_path='./plots/pairSetup_LeNetLike3.svg',
-        lr=0.0003,
-        epochs=300,
-        use_crossentropy=True,
-        verbose=True,
-        rounds=10,
-        data_augment=True)
+                model,
+                'PairSetup',
+                lr=0.00015,
+                epochs=400,
+                use_crossentropy=True,
+                rounds=10,
+                verbose=True,
+                data_augment=True)
+    print('mean minimum test error : {0:.{1}f} %'.format(test_err_mean, 1))
+    print('std minimum test error : {0:.{1}f} %'.format(test_err_std, 1))
+    print('number of trainable parameters : {}'.format(
+        count_parameters(model)))
+
+    torch.manual_seed(random_seed)
+    print('***** Running Non-DataAugmented MLP model (for PairSetup) ********')
+    in_dim, out_dim = 14 * 14 * 2, 2
+    model = models.MLP(10, 50, in_dim, out_dim)
+    test_err_mean, test_err_std, _, _ = training_functions.rounds_train(
+                model,
+                'PairSetup',
+                lr=0.00015,
+                epochs=400,
+                use_crossentropy=True,
+                rounds=10,
+                verbose=True)
     print('mean minimum test error : {0:.{1}f} %'.format(test_err_mean, 1))
     print('std minimum test error : {0:.{1}f} %'.format(test_err_std, 1))
     print('number of trainable parameters : {}'.format(
