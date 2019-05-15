@@ -3,7 +3,8 @@ from torch import nn
 from torch.utils.data import Dataset, DataLoader
 import dlc_practical_prologue as prologue
 import numpy as np
-# Our modules
+
+# Our code is contained in the following modules :
 import models  # contains all our torch models classes
 import plots  # custom ploting functions to produce figures of the report
 import training_functions  # all our functions and classes for training

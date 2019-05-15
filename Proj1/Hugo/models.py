@@ -6,8 +6,8 @@ class SimpleLinear(nn.Module):
     """
     A simple Linear Model.
     Arguments:
-        - in_dim: dimension of input
-        - out_dim: dimension of output
+        - in_dim: dimension of input.
+        - out_dim: dimension of output.
     """
 
     def __init__(self, in_dim, out_dim):
@@ -27,8 +27,8 @@ class MLP(nn.Module):
     """ A multilayer perceptron (i.e fully connected + ReLu layers) of L hidden
     layers of with h hidden neurons per layer.
     Arguments:
-        - in_dim: dimension of input
-        - out_dim: dimension of output
+        - in_dim: dimension of input.
+        - out_dim: dimension of output.
     """
 
     def __init__(self, L, h, in_dim, out_dim):
@@ -60,9 +60,9 @@ class LeNetLike5(nn.Module):
     tensor of size N*out_dim. Convolution kernels are 5*5.
     Arguments:
         - in_depth : number of channels of input picture (2 for PairSetup and 1
-        for AuxiliarySetup)
+        for AuxiliarySetup).
         - out_dim : dimension of the output (2 for PairSetup and 10 for
-        AuxiliarySetup)
+        AuxiliarySetup).
     """
 
     def __init__(self, in_depth, out_dim):
@@ -101,9 +101,9 @@ class LeNetLike3(nn.Module):
     tensor of size N*out_dim. Convolution kernels are 3*3.
     Arguments:
         - in_depth : number of channels of input picture (2 for PairSetup and 1
-        for AuxiliarySetup)
+        for AuxiliarySetup).
         - out_dim : dimension of the output (2 for PairSetup and 10 for
-        AuxiliarySetup)
+        AuxiliarySetup).
     """
 
     def __init__(self, in_depth, out_dim):
@@ -146,10 +146,10 @@ class VGGNetLike(nn.Module):
     two. Input tensor of size N*in_depth*14*14, and output tensor of size
     N*out_dim. Convolution kernels are 3*3.
     Arguments:
-        - in_depth : number of channels of input picture (2 for PairSetup and 1 
-        for AuxiliarySetup)
-        - out_dim : dimension of the output (2 for PairSetup and 10 for 
-        AuxiliarySetup)
+        - in_depth : number of channels of input picture (2 for PairSetup and 1
+        for AuxiliarySetup).
+        - out_dim : dimension of the output (2 for PairSetup and 10 for
+        AuxiliarySetup).
     """
 
     def __init__(self, in_depth, out_dim):
@@ -203,7 +203,7 @@ class ResBlock(nn.Module):
     'No ReLU, BN before add' from http://torch.ch/blog/2016/02/04/resnets.html.
     Convolution kernel are 3*3.
     Arguments :
-        - in_depth : number of channels of input
+        - in_depth : number of channels of input.
     """
 
     def __init__(self, depth):
@@ -226,10 +226,10 @@ class ResNet(nn.Module):
     second ResBlock.
     Arguments :
         - in_depth : number of channels of input picture (2 for PairSetup and 1
-        for AuxiliarySetup)
+        for AuxiliarySetup).
         - out_dim : dimension of the output (2 for PairSetup and 10 for
-        AuxiliarySetup)
-        - net_depth : number of channels to be augmented to
+        AuxiliarySetup).
+        - net_depth : number of channels to be augmented to.
     """
 
     def __init__(self, in_depth, out_dim, net_depth):
