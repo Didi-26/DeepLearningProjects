@@ -17,17 +17,17 @@ print(msg)
 
 # Set here which experiment is to be run (running them all will take a long
 # time to compute)
-run_LossCompare = False
+run_LossCompare = True
 # Experiments for "PairSetup" : In this setup, we consider directly the pairs
 # as input to the network. Thus our inputs are N samples of [2,14,14] made of
 # two 14*14 pictures. Our ouputs are the class 0 or 1  indicating whereas if
 # the first digit is lesser or equal to the second.
-run_PairSetup_SimpleLinear = False
-run_PairSetup_MLP = False
-run_PairSetup_LeNetLike5 = False
-run_PairSetup_LeNetLike3 = False
-run_PairSetup_VGGNetLike = False
-run_PairSetup_ResNet = False
+run_PairSetup_SimpleLinear = True
+run_PairSetup_MLP = True
+run_PairSetup_LeNetLike5 = True
+run_PairSetup_LeNetLike3 = True
+run_PairSetup_VGGNetLike = True
+run_PairSetup_ResNet = True
 # Experiments for "AuxiliarySetup" : In this setup, we consider N individual
 # 14*14 pictures as input. The network use an auxiliary loss to learn to
 # classify those from 0 to 9. The auxiliary outputs are the the class 0 to 9
@@ -35,14 +35,14 @@ run_PairSetup_ResNet = False
 # predict the number and we can then do the difference to perform our original
 # goal which is to predict whereas if the first digit is lesser or equal to the
 # second
-run_AuxiliarySetup_SimpleLinear = False
-run_AuxiliarySetup_MLP = False
-run_AuxiliarySetup_LeNetLike5 = False
-run_AuxiliarySetup_LeNetLike3 = False
-run_AuxiliarySetup_VGGNetLike = False  # TODO
-run_AuxiliarySetup_ResNet = False  # TODO
+run_AuxiliarySetup_SimpleLinear = True
+run_AuxiliarySetup_MLP = True
+run_AuxiliarySetup_LeNetLike5 = True
+run_AuxiliarySetup_LeNetLike3 = True
+run_AuxiliarySetup_VGGNetLike = True
+run_AuxiliarySetup_ResNet = True
 # Comparaison perf with /without data-augmentation
-run_PairSetup_MLP_DataAugmented_Compare = False
+run_PairSetup_MLP_DataAugmented_Compare = True
 
 # Set a fixed seed for reproducibility
 random_seed = 42
@@ -326,7 +326,7 @@ if run_AuxiliarySetup_VGGNetLike:
         'AuxiliarySetup',
         plot_title='Auxiliary Setup VGGNetLike error history',
         plot_file_path='./plots/auxiliarySetup_VGGNetLike.svg',
-        lr=0.00035,
+        lr=0.00025,
         epochs=300,
         use_crossentropy=True,
         verbose=True,
